@@ -5,6 +5,8 @@ description = "My Personal Transformer Language Model"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "einops>=0.8.2",
+    "jaxtyping>=0.3.10",
     "matplotlib>=3.10.9",
     "numpy>=2.4.6",
     "regex>=2026.5.9",
