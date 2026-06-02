@@ -479,30 +479,30 @@ class CausalMultiHeadSelfAttention(nn.Module):
         # Project the model states into key, query, and value spaces.
         K, Q, V = self.W_k(x), self.W_q(x), self.W_v(x)
 
-        # Inject positional information into queries and keys before attention.
-        Q = self.pos_enc(Q, token_positions)
-        K = self.pos_enc(K, token_positions)
-
         # Split the projected features into independent attention heads.
         K = rearrange(K, "... seq (head d) -> ... head seq d", head=self.num_heads)
         Q = rearrange(Q, "... seq (head d) -> ... head seq d", head=self.num_heads)
         V = rearrange(V, "... seq (head d) -> ... head seq d", head=self.num_heads)
 
+        # Inject positional information into queries and keys before attention.
+        Q = self.pos_enc(Q, token_positions)
+        K = self.pos_enc(K, token_positions)
+
         sequence_length = x.shape[-2]
         # # A lower-triangular mask prevents each token from attending forward.
-        # M = (
-        #     torch.tril(
-        #         torch.ones(
-        #             sequence_length, sequence_length, dtype=torch.bool, device=x.device
-        #         )
-        #     )
-        #     .unsqueeze(0)
-        #     .unsqueeze(0)
-        # )
-        q_len = Q.shape[-2]  # query positions
-        k_len = K.shape[-2]  # key positions (may differ with KV cache)
-        M = torch.ones(q_len, k_len, dtype=torch.bool, device=x.device)
-        M = torch.tril(M, diagonal=k_len - q_len)  # offset for past context
+        M = (
+            torch.tril(
+                torch.ones(
+                    sequence_length, sequence_length, dtype=torch.bool, device=x.device
+                )
+            )
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
+        # q_len = Q.shape[-2]  # query positions
+        # k_len = K.shape[-2]  # key positions (may differ with KV cache)
+        # M = torch.ones(q_len, k_len, dtype=torch.bool, device=x.device)
+        # M = torch.tril(M, diagonal=k_len - q_len)  # offset for past context
         attention_output = scaled_dot_product_attention(Q, K, V, M)
 
         # Merge the head dimension back into the model dimension.
