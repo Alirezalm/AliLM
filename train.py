@@ -30,14 +30,14 @@ def main():
     print(f"Vocabulary size: {vocabulary_size:,}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
     config = {
         "vocab_size": vocabulary_size,
         "context_length": 256,
         "embedding_dim": 500,
         "num_heads": 10,
-        "num_layers": 30,
+        "num_layers": 20,
         "d_ff": 5,
         "Batch_size": 16,
         "learning_rate": 1e-4,
