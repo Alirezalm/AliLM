@@ -485,7 +485,7 @@ class CausalMultiHeadSelfAttention(nn.Module):
         V = rearrange(V, "... seq (head d) -> ... head seq d", head=self.num_heads)
 
         # Inject positional information into queries and keys before attention.
-        Q = self.pos_enc(Q, token_positions)
+        Q = self.pos_enc(Q, token_positions)  # add head dim for indexing
         K = self.pos_enc(K, token_positions)
 
         sequence_length = x.shape[-2]
@@ -510,3 +510,100 @@ class CausalMultiHeadSelfAttention(nn.Module):
             attention_output, "... head seq d -> ... seq (head d)"
         )
         return self.W_o(attention_output)
+
+
+class TransformerBlock(nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        positional_encoder: RotaryPositionalEmbedding,
+    ):
+        super().__init__()
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_ff = d_ff
+        self.pos_enc = positional_encoder
+
+        self.layer_norm_1 = RMSNorm(d_model)
+        self.layer_norm_2 = RMSNorm(d_model)
+        self.mhsa = CausalMultiHeadSelfAttention(d_model, num_heads, self.pos_enc)
+        self.ffn = SwiGLUFFN(d_model)
+
+    def forward(
+        self,
+        x: Float[torch.Tensor, "... seq d_model"],
+        token_positions: Float[torch.Tensor, "... seq"],
+    ):
+        y = x + self.mhsa(self.layer_norm_1(x), token_positions)
+        return y + self.ffn(self.layer_norm_2(y))
+
+
+class AliLM(nn.Module):
+    """Decoder-only language model built from stacked transformer blocks.
+
+    The model maps token IDs to logits over the vocabulary for each sequence
+    position. It uses token embeddings, rotary-positioned causal self-attention
+    blocks, a final RMSNorm, and a linear output projection.
+
+    Args:
+        vocab_size: Number of tokens in the vocabulary.
+        context_length: Maximum sequence length used to precompute RoPE tables.
+        d_model: Width of token representations.
+        num_layers: Number of transformer blocks.
+        num_heads: Number of attention heads per block.
+        d_ff: Feed-forward width placeholder for API compatibility.
+
+    Shape:
+        Input: `(batch, seq)` integer token IDs.
+        Output: `(batch, seq, vocab_size)` next-token logits.
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        context_length: int,
+        d_model: int,
+        num_layers: int,
+        num_heads: int,
+        d_ff: int,
+    ):
+        """Initialize model components and shared rotary positional encoder."""
+        super().__init__()
+
+        d_k = d_model // num_heads
+
+        self.emb = Embedding(vocab_size, d_model)
+        pos_enc = RotaryPositionalEmbedding(10000, d_k, context_length)
+        self.transformer_blocks = nn.ModuleList(
+            [
+                TransformerBlock(d_model, num_heads, d_ff, pos_enc)
+                for _ in range(num_layers)
+            ]
+        )
+        self.layer_norm = RMSNorm(d_model)
+        self.output_embedding = Linear(d_in=d_model, d_out=vocab_size)
+
+    def forward(self, x: Float[torch.Tensor, "batch seq"]):
+        """Compute token logits for a batch of input token IDs.
+
+        Args:
+            x: Integer tensor of token IDs with shape `(batch, seq)`.
+
+        Returns:
+            Logits tensor with shape `(batch, seq, vocab_size)`.
+        """
+
+        embeddings = self.emb(x)
+        sequence_length = x.shape[-1]
+        token_positions = torch.arange(sequence_length, device=x.device)
+        transformer_output = embeddings
+
+        for block in self.transformer_blocks:
+            transformer_output = block(transformer_output, token_positions)
+
+        normalization = self.layer_norm(transformer_output)
+        logits = self.output_embedding(normalization)
+        return logits

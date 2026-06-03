@@ -3,6 +3,7 @@ import time
 
 import torch
 from transformers import AutoTokenizer
+from jaxtyping import Int
 
 
 def tokenize_dataset(
@@ -103,9 +104,39 @@ def save_shard(tokens, output_prefix, shard_idx):
     torch.save(tensor, output_path)
 
 
-if __name__ == "__main__":
-    tokenize_dataset(
-        input_path="./data/TinyStoriesV2-GPT4-train.txt",
-        output_prefix="./data/ts_train",
-        max_tokens_per_shard=50_000_000,
-    )
+def data_loading(
+    x: torch.Tensor, batch_size: int, context_length: int, device: str = "cpu"
+) -> tuple[torch.Tensor, torch.Tensor]:
+
+    n = x.shape[0]
+
+    start_idx = torch.randint(0, n - context_length, (batch_size,))
+
+    X = torch.stack([x[idx : idx + context_length] for idx in start_idx])
+    Y = torch.stack([x[idx + 1 : idx + 1 + context_length] for idx in start_idx])
+
+    return X.to(device), Y.to(device)
+
+
+def save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    path: str,
+):
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "epoch": epoch,
+    }
+    torch.save(checkpoint, path)
+
+
+def load_checkpoint(
+    src_path: str, model: torch.nn.Module, optimizer: torch.optim.Optimizer
+):
+    checkpoint = torch.load(src_path)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    epoch = checkpoint["epoch"]
+    return epoch
