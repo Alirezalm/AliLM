@@ -26,6 +26,11 @@ def tokenize_dataset(
         input_path: Path to input text file.
         output_prefix: Prefix for output shard files.
         max_tokens_per_shard: Maximum tokens per output shard.
+
+    Notes:
+        Each non-empty input line is treated as one document. The function
+        tokenizes the line with the GPT-2 tokenizer, appends an end-of-text
+        token, and writes accumulated tokens to numbered shard files.
     """
 
     tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True)
@@ -170,7 +175,10 @@ def save_checkpoint(
         "optimizer_state_dict": optimizer.state_dict(),
         "epoch": epoch,
     }
-    torch.save(checkpoint, path)
+    # check if checkpoint directory exists, if not create it
+    checkpoint_dir = Path(path).parent
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(checkpoint, path + f"_epoch_{epoch:05d}.pt")
 
 
 def load_checkpoint(
@@ -192,3 +200,72 @@ def load_checkpoint(
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     epoch = checkpoint["epoch"]
     return epoch
+
+
+def param_count(model, include_embedding=True):
+    """Count trainable model parameters.
+
+    Args:
+        model: Model whose trainable parameters should be counted.
+        include_embedding: Whether embedding parameters should be included in
+            the total.
+
+    Returns:
+        The number of trainable parameters.
+    """
+
+    if include_embedding:
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    else:
+        return sum(
+            p.numel()
+            for name, p in model.named_parameters()
+            if p.requires_grad and "embed" not in name
+        )
+
+
+def model_size(model):
+    """Estimate the size of trainable model parameters in MiB.
+
+    Args:
+        model: Model whose trainable parameter storage should be measured.
+
+    Returns:
+        Total size of trainable parameters in mebibytes.
+    """
+
+    return sum(
+        p.numel() * p.element_size() for p in model.parameters() if p.requires_grad
+    ) / (1024**2)
+
+
+def save_model(model, path):
+    """Save only the model weights to disk.
+
+    Args:
+        model: Model whose state dictionary should be saved.
+        path: Destination path for the serialized weights.
+    """
+
+    torch.save(model.state_dict(), path)
+
+
+def print_section(title):
+    """Print a simple section header for console logs.
+
+    Args:
+        title: Section title to display between separator bars.
+    """
+
+    print(f"\n{'=' * 16} {title} {'=' * 16}")
+
+
+def print_stat(label, value):
+    """Print a left-aligned label/value pair for console summaries.
+
+    Args:
+        label: Name of the statistic being shown.
+        value: Value to display next to the label.
+    """
+
+    print(f"{label:<24} {value}")

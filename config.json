@@ -1,0 +1,11 @@
+{
+    "model_name": "AliLM",
+    "vocab_size": 50257,
+    "context_length": 256,
+    "embedding_dim": 512,
+    "num_heads": 16,
+    "num_layers": 16,
+    "d_ff": 1344,
+    "Batch_size": 32,
+    "learning_rate": 0.001
+}
