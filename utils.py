@@ -1,3 +1,11 @@
+"""Utility helpers for dataset preprocessing, batching, and checkpoint I/O.
+
+This module groups the small training-time helpers used across the project:
+text corpora can be tokenized into shard files, token tensors can be sampled
+into input-target training batches, and model checkpoints can be saved or
+restored.
+"""
+
 from pathlib import Path
 import time
 
@@ -96,8 +104,20 @@ def tokenize_dataset(
     )
 
 
-def save_shard(tokens, output_prefix, shard_idx):
+def save_shard(tokens: list[int], output_prefix: str, shard_idx: int):
+    """Persist one token shard to disk as a PyTorch tensor.
+
+    Args:
+        tokens: Flat sequence of token ids to store.
+        output_prefix: Prefix used to build the shard filename.
+        shard_idx: Zero-based shard index written into the filename.
+    """
+
     tensor = torch.tensor(tokens, dtype=torch.int32)
+
+    # check if output directory exists, if not create it
+    output_dir = Path(output_prefix).parent
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     output_path = f"{output_prefix}_shard_{shard_idx:05d}.pt"
 
@@ -107,6 +127,18 @@ def save_shard(tokens, output_prefix, shard_idx):
 def data_loading(
     x: torch.Tensor, batch_size: int, context_length: int, device: str = "cpu"
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Sample random next-token training batches from a 1D token tensor.
+
+    Args:
+        x: Token tensor containing a contiguous stream of token ids.
+        batch_size: Number of sequences to sample.
+        context_length: Length of each input and target sequence.
+        device: Device where the returned tensors should be moved.
+
+    Returns:
+        A tuple ``(X, Y)`` where ``X`` contains input windows and ``Y`` is the
+        same data shifted by one token for next-token prediction.
+    """
 
     n = x.shape[0]
 
@@ -124,6 +156,15 @@ def save_checkpoint(
     epoch: int,
     path: str,
 ):
+    """Save model and optimizer state for later training resumption.
+
+    Args:
+        model: Model whose parameters should be serialized.
+        optimizer: Optimizer whose internal state should be serialized.
+        epoch: Epoch number to persist alongside the state.
+        path: Destination path for the checkpoint file.
+    """
+
     checkpoint = {
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
@@ -135,6 +176,17 @@ def save_checkpoint(
 def load_checkpoint(
     src_path: str, model: torch.nn.Module, optimizer: torch.optim.Optimizer
 ):
+    """Restore model and optimizer state from a checkpoint file.
+
+    Args:
+        src_path: Path to a checkpoint created by ``save_checkpoint``.
+        model: Model instance that will receive the restored parameters.
+        optimizer: Optimizer instance that will receive the restored state.
+
+    Returns:
+        The saved epoch number from the checkpoint.
+    """
+
     checkpoint = torch.load(src_path)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

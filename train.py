@@ -1,7 +1,7 @@
-import time
 import torch
 import torch.nn as nn
 from torch.optim import AdamW, lr_scheduler
+import time
 
 from model import AliLM
 from utils import data_loading
@@ -41,7 +41,7 @@ def train():
     print_section("Data")
     print("Loading token sequences...")
     token_sequence = torch.concat(
-        [torch.load(f"./data/ts_train_shard_0000{i}.pt") for i in range(10)]
+        [torch.load(f"./data/ow_train_shard_0000{i}.pt") for i in range(10)]
     )
     print_stat("Tokens loaded:", f"{len(token_sequence):,}")
 
@@ -56,7 +56,7 @@ def train():
         "context_length": 256,
         "embedding_dim": 512,
         "num_heads": 16,
-        "num_layers": 4,
+        "num_layers": 16,
         "d_ff": 1344,
         "Batch_size": 32,
         "learning_rate": 1e-3,
@@ -82,9 +82,11 @@ def train():
     print_stat("Dtype:", str(dtype).replace("torch.", ""))
 
     max_training_tokens = len(token_sequence)  # maximum number of tokens to train on
-    total_steps = 5000  # maximum number of training steps
+    total_steps = max_training_tokens // (
+        config["Batch_size"] * config["context_length"]
+    )  # maximum number of training steps
 
-    max_training_time = 20 * 60  # 20 minutes in seconds
+    max_training_time = 120 * 60  #
     loss_fn = nn.CrossEntropyLoss()
     optimizer = AdamW(model.parameters(), lr=config["learning_rate"])
     scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_steps)
@@ -95,6 +97,8 @@ def train():
     print_stat("Context length:", f"{config['context_length']:,}")
     print_stat("Learning rate:", f"{config['learning_rate']:.1e}")
     print_stat("Max training tokens:", f"{max_training_tokens / 1_000_000:0.3f}M")
+    print_stat("Max training time:", f"{max_training_time / 60:.0f} minutes")
+    print_stat("Maximum number of steps:", f"{total_steps:,}")
 
     total_loss = 0.0
     num_batches = 0
@@ -159,7 +163,7 @@ def train():
 def validate(model, config, device, num_batches: int = 100):
     print_section("Validation")
     print("Loading validation data...")
-    token_sequence = torch.load("./data/ts_valid_shard_00000.pt")
+    token_sequence = torch.load("./data/ow_valid_shard_00000.pt")
     print_stat("Tokens loaded:", f"{len(token_sequence):,}")
 
     loss_fn = nn.CrossEntropyLoss()
