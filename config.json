@@ -7,5 +7,8 @@
     "num_layers": 16,
     "d_ff": 1344,
     "Batch_size": 32,
-    "learning_rate": 0.001
+    "learning_rate": 0.001,
+    "model_weights_path": "models/AliLM.pt",
+    "inference_num_tokens": 255,
+    "inference_temperature": 0.8
 }

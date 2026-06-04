@@ -6,12 +6,52 @@ into input-target training batches, and model checkpoints can be saved or
 restored.
 """
 
+import json
+import os
+import shutil
 from pathlib import Path
 import time
 
 import torch
 from transformers import AutoTokenizer
 from jaxtyping import Int
+
+
+def load_config(path: str = "config.json") -> dict:
+    """Load the global JSON configuration file.
+
+    Args:
+        path: Path to the JSON config file (default: ``config.json`` in the
+            current working directory).
+
+    Returns:
+        Dictionary of configuration parameters.
+    """
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def load_shards(directory: str) -> torch.Tensor:
+    """Load and concatenate all ``.pt`` shard files from a directory.
+
+    Files are processed in sorted order so the concatenation is deterministic
+    regardless of filesystem listing order.
+
+    Args:
+        directory: Path to a directory containing ``.pt`` token shard files.
+
+    Returns:
+        1-D token tensor formed by concatenating all shards.
+
+    Raises:
+        FileNotFoundError: If no ``.pt`` files are found in *directory*.
+    """
+    shard_files = sorted(f for f in os.listdir(directory) if f.endswith(".pt"))
+    if not shard_files:
+        raise FileNotFoundError(f"No .pt shard files found in '{directory}'.")
+    return torch.concat(
+        [torch.load(os.path.join(directory, shard)) for shard in shard_files]
+    )
 
 
 def tokenize_dataset(
@@ -250,22 +290,22 @@ def save_model(model, path):
     torch.save(model.state_dict(), path)
 
 
-def print_section(title):
-    """Print a simple section header for console logs.
+def print_section(title: str) -> None:
+    """Print a section header that adapts to the current terminal width.
 
     Args:
-        title: Section title to display between separator bars.
+        title: Section title to centre between separator lines.
     """
+    width = min(shutil.get_terminal_size(fallback=(88, 20)).columns, 88)
+    side = max((width - len(title) - 2) // 2, 4)
+    print(f"\n{'─' * side} {title} {'─' * side}")
 
-    print(f"\n{'=' * 16} {title} {'=' * 16}")
 
-
-def print_stat(label, value):
-    """Print a left-aligned label/value pair for console summaries.
+def print_stat(label: str, value) -> None:
+    """Print a two-column label/value stat line.
 
     Args:
-        label: Name of the statistic being shown.
-        value: Value to display next to the label.
+        label: Name of the statistic.
+        value: Value to display; any type accepted and converted to string.
     """
-
-    print(f"{label:<24} {value}")
+    print(f"  {label:<28} {value}")
