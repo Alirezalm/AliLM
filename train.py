@@ -1,3 +1,4 @@
+import time
 import torch
 import torch.nn as nn
 from torch.optim import AdamW, lr_scheduler
@@ -20,14 +21,24 @@ def save_model(model, path):
     torch.save(model.state_dict(), path)
 
 
+def print_section(title):
+    print(f"\n{'=' * 16} {title} {'=' * 16}")
+
+
+def print_stat(label, value):
+    print(f"{label:<24} {value}")
+
+
 def main():
+    print_section("Data")
+    print("Loading token sequences...")
     token_sequence = torch.concat(
-        [torch.load(f"./data/ts_train_shard_0000{i}.pt") for i in range(3)]
+        [torch.load(f"./ow_train_shard_0000{i}.pt") for i in range(4)]
     )
-    print(f"Number of tokens: {len(token_sequence):,}")
+    print_stat("Tokens loaded:", f"{len(token_sequence):,}")
 
     vocabulary_size = 50257
-    print(f"Vocabulary size: {vocabulary_size:,}")
+    print_stat("Vocabulary size:", f"{vocabulary_size:,}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
@@ -35,14 +46,16 @@ def main():
     config = {
         "vocab_size": vocabulary_size,
         "context_length": 256,
-        "embedding_dim": 500,
-        "num_heads": 10,
-        "num_layers": 20,
-        "d_ff": 5,
-        "Batch_size": 16,
+        "embedding_dim": 768,
+        "num_heads": 12,
+        "num_layers": 12,
+        "d_ff": 4 * 768,
+        "Batch_size": 32,
         "learning_rate": 1e-4,
     }
 
+    print_section("Model")
+    print("Initializing model...")
     model = (
         AliLM(
             vocab_size=config["vocab_size"],
@@ -55,22 +68,28 @@ def main():
         .to(device)
         .to(dtype)
     )
+    print_stat("Parameters:", f"{param_count(model):,}")
+    print_stat("Model size (MB):", f"{model_size(model):.2f}")
+    print_stat("Device:", device)
+    print_stat("Dtype:", str(dtype).replace("torch.", ""))
 
-    print(f"Number of trainable parameters: {param_count(model):,}")
-    print(f"Model size (MB): {model_size(model):.2f}")
-    print(f"device: {device}")
-    print(f"dtype: {dtype}")
-
-    total_steps = 5000
+    total_steps = 50000
     loss_fn = nn.CrossEntropyLoss()
     optimizer = AdamW(model.parameters(), lr=config["learning_rate"])
     scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_steps)
 
+    print_section("Training")
+    print_stat("Total steps:", f"{total_steps:,}")
+    print_stat("Batch size:", f"{config['Batch_size']:,}")
+    print_stat("Context length:", f"{config['context_length']:,}")
+    print_stat("Learning rate:", f"{config['learning_rate']:.1e}")
+
     total_loss = 0.0
     num_batches = 0
     loss_values = []
-
+    total_number_of_tokens = 0
     model.train()
+    start = time.perf_counter()
     for epoch in range(total_steps):
         X, Y = data_loading(
             token_sequence,
@@ -78,6 +97,8 @@ def main():
             context_length=config["context_length"],
             device=device,
         )
+
+        total_number_of_tokens += X.numel()
 
         optimizer.zero_grad()
 
@@ -98,13 +119,22 @@ def main():
         average_loss = total_loss / num_batches
         perplexity = torch.exp(torch.tensor(average_loss)).item()
 
-        if (epoch + 1) % 100 == 0:
+        if (epoch + 1) % 1000 == 0:
+            end = time.perf_counter()
+            elapsed = end - start
+            token_per_second = total_number_of_tokens / (end - start)
             print(
-                f"Epoch {epoch + 1} / {total_steps}, Average Loss: {average_loss:.4f}, Perplexity: {perplexity:.4f}"
+                f"[{epoch + 1:>5}/{total_steps}] "
+                f"loss={average_loss:.4f} | "
+                f"ppl={perplexity:.4f} | "
+                f"tokens={total_number_of_tokens:,} | "
+                f"tok/s={token_per_second:,.2f} | "
+                f"elapsed={elapsed:.1f}s"
             )
 
     save_model(model, "model_weights.pt")
-    print("Model saved to model_weights.pt")
+    print_section("Checkpoint")
+    print_stat("Saved model:", "model_weights.pt")
 
 
 if __name__ == "__main__":
