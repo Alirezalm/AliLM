@@ -2,10 +2,10 @@ from utils import tokenize_dataset
 
 
 def main():
-    data_path = "./data/owt_train.txt"
+    data_path = "./data/TinyStoriesV2-GPT4-valid.txt"
     tokenize_dataset(
         data_path,
-        "ow_train",
+        "./data/ts_valid",
         100_000_000,
     )
 

@@ -166,3 +166,4 @@ cython_debug/
 /data/*
 tokenizer/merges.pkl
 tokenizer/vocab.pkl
+*.pt

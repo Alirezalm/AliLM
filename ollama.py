@@ -12,23 +12,22 @@ def run_engine(model, tokenizer, device):
         if prompt.lower() == "exit":
             break
         generate(
-            model, tokenizer, prompt, num_tokens=512, device=device, temperature=0.8
+            model, tokenizer, prompt, num_tokens=256, device=device, temperature=0.8
         )
 
 
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.float16 if device == "cuda" else torch.float32
-
     config = {
         "vocab_size": 50257,
-        "context_length": 4096,
-        "embedding_dim": 768,
-        "num_heads": 12,
-        "num_layers": 12,
-        "d_ff": 4 * 768,
+        "context_length": 2048,
+        "embedding_dim": 512,
+        "num_heads": 16,
+        "num_layers": 4,
+        "d_ff": 1344,
         "Batch_size": 32,
-        "learning_rate": 1e-4,
+        "learning_rate": 1e-3,
     }
 
     model = (

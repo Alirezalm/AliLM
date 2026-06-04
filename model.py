@@ -92,11 +92,11 @@ class Embedding(nn.Module):
         """Initialize the embedding matrix."""
         super().__init__()
 
-        self.weight = nn.Parameter(
+        self.embed = nn.Parameter(
             torch.empty(num_embeddings, embedding_dim, device=device, dtype=dtype)
         )
 
-        nn.init.trunc_normal_(self.weight, mean=0.0, std=1.0, a=-3.0, b=3.0)
+        nn.init.trunc_normal_(self.embed, mean=0.0, std=1.0, a=-3.0, b=3.0)
 
     def forward(
         self, x: Int[torch.LongTensor, "batch seq"]
@@ -109,7 +109,7 @@ class Embedding(nn.Module):
         Returns:
             Tensor containing the embedding vector for each input index.
         """
-        return self.weight[x, :]
+        return self.embed[x, :]
 
 
 class RMSNorm(nn.Module):
