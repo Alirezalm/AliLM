@@ -247,14 +247,14 @@ def main() -> None:
     parser.add_argument(
         "--num_training_tokens",
         type=int,
-        default=500_000_000,
-        help="Total token budget for training (default: 500M).",
+        default=500_000_000_000,
+        help="Total token budget for training (default: 500B).",
     )
     parser.add_argument(
         "--max_training_time",
         type=float,
-        default=60 * 60,
-        help="Maximum wall-clock training time in seconds (default: 3600).",
+        default=5 * 60 * 60,
+        help="Maximum wall-clock training time in seconds (default: 5 hours).",
     )
     parser.add_argument(
         "--print_interval",
