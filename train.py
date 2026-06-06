@@ -29,6 +29,7 @@ from utils import (
     print_section,
     print_stat,
     save_checkpoint,
+    load_checkpoint,
     save_model,
 )
 
@@ -132,6 +133,17 @@ def train(
     print_stat("  Token budget:", f"{num_training_tokens / 1_000_000:.1f}M")
     print_stat("  Time budget:", f"{max_training_time / 60:.0f} min")
     print()
+
+    # ── Resume From Checkpoint ──────────────────────────────────────────────────
+    if os.path.exists(checkpoint_path) and os.path.isfile(checkpoint_path):
+        print_stat("  Resuming from checkpoint:", checkpoint_path)
+        start_epoch = load_checkpoint(checkpoint_path, model, optimizer)
+
+        for _ in range(start_epoch):
+            scheduler.step()
+    else:
+        print_stat("  No checkpoint found, starting fresh training.")
+        start_epoch = 0
 
     # ── Training loop ──────────────────────────────────────────────────────────
     total_loss = 0.0

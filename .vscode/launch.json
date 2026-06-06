@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Train AliLM",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/ollama.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            // "args": [
+            //     "--train_data_path",
+            //     "./tokenized_data/owt/train"
+            // ]
+        }
+    ]
+}

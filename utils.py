@@ -218,7 +218,7 @@ def save_checkpoint(
     # check if checkpoint directory exists, if not create it
     checkpoint_dir = Path(path).parent
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(checkpoint, path + f"_epoch_{epoch:05d}.pt")
+    torch.save(checkpoint, path)
 
 
 def load_checkpoint(

@@ -1,14 +1,14 @@
 {
     "model_name": "AliLM",
     "vocab_size": 50257,
-    "context_length": 256,
+    "context_length": 1024,
     "embedding_dim": 512,
     "num_heads": 16,
-    "num_layers": 16,
+    "num_layers": 20,
     "d_ff": 1344,
     "Batch_size": 32,
     "learning_rate": 0.001,
-    "model_weights_path": "models/AliLM.pt",
-    "inference_num_tokens": 255,
-    "inference_temperature": 0.8
+    "model_weights_path": "models/AliLM.pt", 
+    "inference_num_tokens": 1024,
+    "inference_temperature": 0.7
 }

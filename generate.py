@@ -151,7 +151,7 @@ def generate(
 
     # ── Generation loop for the remaining tokens ───────────────────────────────
     eval_start = time.perf_counter()
-    for _ in range(num_tokens - 1):
+    for _ in range(num_tokens - prompt_len - 1):
         with torch.no_grad():
             logits = model(inputs)  # (1, growing_T, vocab_size)
             next_token_logits = logits[:, -1, :] / temperature
@@ -165,6 +165,9 @@ def generate(
         generated += token_text
         total_tokens_generated += 1
         current_line_length = stream_text(token_text, current_line_length)
+
+        if predicted_token_id.item() == tokenizer.eos_token_id:
+            break
 
     eval_duration = time.perf_counter() - eval_start
     total_duration = time.perf_counter() - overall_start

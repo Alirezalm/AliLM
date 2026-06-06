@@ -50,7 +50,7 @@ def run_engine(
         if not prompt:
             continue
         if prompt.lower() == "exit":
-            print("Exiting.")
+            print("Exiting ...")
             break
         generate(
             model,
@@ -81,7 +81,7 @@ def main() -> None:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # Use half-precision on GPU for faster inference; full precision on CPU
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
     print_section("AliLM Inference Engine")
     print_stat("  Model:", config["model_name"])
