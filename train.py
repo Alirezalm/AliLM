@@ -139,10 +139,9 @@ def train(
         print_stat("  Resuming from checkpoint:", checkpoint_path)
         start_epoch = load_checkpoint(checkpoint_path, model, optimizer)
 
-        for _ in range(start_epoch):
-            scheduler.step()
+        scheduler.last_epoch = start_epoch  # Sync scheduler with loaded epoch
     else:
-        print_stat("  No checkpoint found, starting fresh training.")
+        print_stat("  No checkpoint found, starting fresh training.", None)
         start_epoch = 0
 
     # ── Training loop ──────────────────────────────────────────────────────────

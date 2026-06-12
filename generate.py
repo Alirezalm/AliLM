@@ -166,8 +166,8 @@ def generate(
         total_tokens_generated += 1
         current_line_length = stream_text(token_text, current_line_length)
 
-        if predicted_token_id.item() == tokenizer.eos_token_id:
-            break
+        # if predicted_token_id.item() == tokenizer.eos_token_id:
+        #     break
 
     eval_duration = time.perf_counter() - eval_start
     total_duration = time.perf_counter() - overall_start
